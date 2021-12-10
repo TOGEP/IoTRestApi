@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -42,15 +43,23 @@ func (store *datastore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (*datastore) getTemperature(w http.ResponseWriter, r *http.Request) {
-	item := Item{http.MethodGet, http.StatusOK}
-	res, err := json.Marshal(item)
+func (store *datastore) getTemperature(w http.ResponseWriter, r *http.Request) {
+	topic := strings.TrimPrefix(r.URL.Path, "/temperature/")
+	store.RLock()
+	item, ok := store.m[topic]
+	store.RUnlock()
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	jsonBytes, err := json.Marshal(item)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(res)
+	w.Write(jsonBytes)
 }
 
 func (store *datastore) addTemperature(w http.ResponseWriter, r *http.Request) {
