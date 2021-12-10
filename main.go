@@ -24,7 +24,9 @@ func main() {
 		m:       map[string]Item{},
 		RWMutex: sync.RWMutex{},
 	}
+
 	mux.Handle("/temperature", store)
+	mux.Handle("/temperature/", store)
 	log.Println(http.ListenAndServe(":8080", mux))
 }
 
