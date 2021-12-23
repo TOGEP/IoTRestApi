@@ -32,10 +32,13 @@ func main() {
 }
 
 func (store *datastore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
+	switch {
+	//FIXME listTemperatureへのhandleもっといい方法ありそう
+	case r.Method == http.MethodGet && r.URL.Path == "/temperature/":
+		store.listTemperature(w, r)
+	case r.Method == http.MethodGet:
 		store.getTemperature(w, r)
-	case http.MethodPost:
+	case r.Method == http.MethodPost:
 		store.addTemperature(w, r)
 	default:
 		// 現状その他は想定していない
@@ -73,6 +76,24 @@ func (store *datastore) addTemperature(w http.ResponseWriter, r *http.Request) {
 	store.Unlock()
 
 	jsonBytes, err := json.Marshal(item)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonBytes)
+}
+
+func (store *datastore) listTemperature(w http.ResponseWriter, r *http.Request) {
+	store.RLock()
+	items := make([]Item, 0, len(store.m))
+	for _, v := range store.m {
+		items = append(items, v)
+	}
+	store.RUnlock()
+
+	jsonBytes, err := json.Marshal(items)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
